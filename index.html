@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Week Number & World Clock</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2em;
+    }
+    .clock {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .city {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .city h2 {
+      margin: 0;
+      font-size: 1.2em;
+    }
+    .time {
+      font-size: 1.5em;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="week">Loading current week...</h1>
+  <div class="clock">
+    <div class="city">
+      <h2>Gothenburg</h2>
+      <div class="time" id="gothenburg"></div>
+    </div>
+    <div class="city">
+      <h2>Istanbul</h2>
+      <div class="time" id="istanbul"></div>
+    </div>
+    <div class="city">
+      <h2>Vienna</h2>
+      <div class="time" id="vienna"></div>
+    </div>
+    <div class="city">
+      <h2>Dubai</h2>
+      <div class="time" id="dubai"></div>
+    </div>
+    <div class="city">
+      <h2>Kuala Lumpur</h2>
+      <div class="time" id="kl"></div>
+    </div>
+    <div class="city">
+      <h2>Shanghai</h2>
+      <div class="time" id="shanghai"></div>
+    </div>
+  </div>
+
+  <script>
+    function getWeekNumber(d) {
+      d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return weekNo;
+    }
+
+    function updateWeek() {
+      const now = new Date();
+      const week = getWeekNumber(now);
+      document.getElementById("week").textContent = `Week ${week} of ${now.getFullYear()}`;
+    }
+
+    function updateTime() {
+      const options = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      const now = new Date();
+
+      document.getElementById("gothenburg").textContent = now.toLocaleTimeString("en-GB", { ...options, timeZone: "Europe/Stockholm" });
+      document.getElementById("istanbul").textContent = now.toLocaleTimeString("tr-TR", { ...options, timeZone: "Europe/Istanbul" });
+      document.getElementById("vienna").textContent = now.toLocaleTimeString("de-AT", { ...options, timeZone: "Europe/Vienna" });
+      document.getElementById("dubai").textContent = now.toLocaleTimeString("en-AE", { ...options, timeZone: "Asia/Dubai" });
+      document.getElementById("kl").textContent = now.toLocaleTimeString("ms-MY", { ...options, timeZone: "Asia/Kuala_Lumpur" });
+      document.getElementById("shanghai").textContent = now.toLocaleTimeString("zh-CN", { ...options, timeZone: "Asia/Shanghai" });
+    }
+
+    updateWeek();
+    updateTime();
+    setInterval(updateTime, 1000);
+  </script>
+</body>
+</html>
