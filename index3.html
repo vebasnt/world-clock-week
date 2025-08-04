@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>World Clocks - Centered Bottom with Remove</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 20px;
+      font-family: sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #week {
+      font-size: 6em;
+      transform: scale(0.2) translateY(-200px);
+      opacity: 0;
+      animation: popup 1.2s ease-out forwards;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    @keyframes popup {
+      0% {
+        transform: scale(0.2) translateY(-200px);
+        opacity: 0;
+      }
+      50% {
+        transform: scale(3) translateY(-50px);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    #addCity {
+      margin-top: 20px;
+      position: relative;
+      text-align: center;
+    }
+
+    input[type="text"] {
+      padding: 8px 12px;
+      font-size: 1em;
+      width: 300px;
+      max-width: 90%;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: white;
+      transition: outline-color 0.3s ease;
+    }
+
+    input[type="text"]:focus {
+      outline: 2px solid #888;
+    }
+
+    button {
+      padding: 8px 12px;
+      font-size: 1em;
+      margin-left: 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: white;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background: #e0e0e0;
+    }
+
+    #suggestions {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      background: white;
+      border: 1px solid #ccc;
+      max-height: 300px;
+      overflow-y: auto;
+      width: 300px;
+      max-width: 90%;
+      box-sizing: border-box;
+      text-align: left;
+      font-size: 0.95em;
+      margin-top: 4px;
+      border-radius: 4px;
+    }
+
+    #suggestions div {
+      padding: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    #suggestions div:hover {
+      background: #eee;
+    }
+
+    #clocksContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      flex: 1;
+      padding-bottom: 40px;
+      gap: 20px;
+    }
+
+    #addedClocks, .preset-clock {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .city {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      width: 200px;
+      text-align: center;
+      flex-shrink: 0;
+      position: relative; /* for remove button */
+    }
+
+    .city h2 {
+      margin: 0;
+      font-size: 1.2em;
+    }
+
+    .time {
+      font-size: 1.5em;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .remove-btn {
+      position: absolute;
+      top: 5px;
+      right: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      color: #888;
+      font-size: 18px;
+      user-select: none;
+      line-height: 1;
+    }
+
+    .remove-btn:hover {
+      color: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="week">Loading current week...</h1>
+
+  <div id="addCity">
+    <input
+      type="text"
+      id="cityInput"
+      placeholder="Enter city name"
+      oninput="showSuggestions()"
+      onclick="showSuggestions()"
+      autocomplete="off"
+    />
+    <button onclick="addCity()">Add City</button>
+    <div id="suggestions"></div>
+  </div>
+
+  <div id="clocksContainer">
+    <div id="addedClocks"></div>
+
+    <div class="preset-clock" id="presetClock">
+      <div class="city"><h2>Gothenburg</h2><div class="time" id="gothenburg"></div></div>
+      <div class="city"><h2>Istanbul</h2><div class="time" id="istanbul"></div></div>
+      <div class="city"><h2>Vienna</h2><div class="time" id="vienna"></div></div>
+      <div class="city"><h2>Dubai</h2><div class="time" id="dubai"></div></div>
+      <div class="city"><h2>Kuala Lumpur</h2><div class="time" id="kl"></div></div>
+      <div class="city"><h2>Shanghai</h2><div class="time" id="shanghai"></div></div>
+    </div>
+  </div>
+
+  <script>
+    const timeZones = Intl.supportedValuesOf('timeZone');
+    const cityToZones = {};
+
+    timeZones.forEach(tz => {
+      const city = tz.substring(tz.lastIndexOf('/') + 1).replace(/_/g, ' ');
+      const cityLower = city.toLowerCase();
+      if (!cityToZones[cityLower]) cityToZones[cityLower] = [];
+      cityToZones[cityLower].push(tz);
+    });
+
+    function getWeekNumber(d) {
+      d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    function updateWeek() {
+      const now = new Date();
+      document.getElementById("week").textContent = `Week ${getWeekNumber(now)} of ${now.getFullYear()}`;
+    }
+
+    function updateTime() {
+      const now = new Date();
+      const opts = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+
+      document.getElementById("gothenburg").textContent = now.toLocaleTimeString("en-GB", { ...opts, timeZone: "Europe/Stockholm" });
+      document.getElementById("istanbul").textContent = now.toLocaleTimeString("tr-TR", { ...opts, timeZone: "Europe/Istanbul" });
+      document.getElementById("vienna").textContent = now.toLocaleTimeString("de-AT", { ...opts, timeZone: "Europe/Vienna" });
+      document.getElementById("dubai").textContent = now.toLocaleTimeString("en-AE", { ...opts, timeZone: "Asia/Dubai" });
+      document.getElementById("kl").textContent = now.toLocaleTimeString("ms-MY", { ...opts, timeZone: "Asia/Kuala_Lumpur" });
+      document.getElementById("shanghai").textContent = now.toLocaleTimeString("zh-CN", { ...opts, timeZone: "Asia/Shanghai" });
+
+      document.querySelectorAll('[data-tz]').forEach(el => {
+        const tz = el.getAttribute('data-tz');
+        el.querySelector('.time').textContent = now.toLocaleTimeString([], { ...opts, timeZone: tz });
+      });
+    }
+
+    function showSuggestions() {
+      const input = document.getElementById("cityInput");
+      const val = input.value.trim().toLowerCase();
+      const container = document.getElementById("suggestions");
+      container.innerHTML = "";
+
+      let cities = !val
+        ? Object.keys(cityToZones).sort()
+        : Object.keys(cityToZones).filter(city => city.includes(val)).sort();
+
+      cities.forEach(city => {
+        const div = document.createElement("div");
+        div.textContent = capitalizeWords(city);
+        div.onclick = () => {
+          input.value = capitalizeWords(city);
+          container.innerHTML = "";
+        };
+        container.appendChild(div);
+      });
+    }
+
+    function capitalizeWords(str) {
+      return str.replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function addCity() {
+      const input = document.getElementById("cityInput");
+      const cityName = input.value.trim().toLowerCase();
+      if (!cityName || !cityToZones[cityName]) return;
+
+      const tz = cityToZones[cityName][0];
+      const container = document.getElementById("addedClocks");
+
+      if ([...container.children].some(div => div.getAttribute('data-tz') === tz)) {
+        input.value = "";
+        document.getElementById("suggestions").innerHTML = "";
+        return;
+      }
+
+      const div = document.createElement("div");
+      div.className = "city";
+      div.setAttribute("data-tz", tz);
+      div.innerHTML = `
+        <h2>${capitalizeWords(cityName)}</h2>
+        <div class="time"></div>
+        <span class="remove-btn" title="Remove">&times;</span>
+      `;
+
+      div.querySelector(".remove-btn").onclick = () => {
+        div.remove();
+      };
+
+      container.appendChild(div);
+
+      input.value = "";
+      document.getElementById("suggestions").innerHTML = "";
+      updateTime();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      updateWeek();
+      updateTime();
+      setInterval(updateTime, 1000);
+    });
+
+    document.addEventListener("click", e => {
+      if (!document.getElementById("addCity").contains(e.target)) {
+        document.getElementById("suggestions").innerHTML = "";
+      }
+    });
+  </script>
+</body>
+</html>
