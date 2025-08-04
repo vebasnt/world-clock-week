@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>What week and time in world</title>
+  <title>World Clocks - Calendar & Cities</title>
   <style>
     html, body {
       height: 100%;
@@ -16,6 +16,95 @@
       display: flex;
       flex-direction: column;
     }
+
+    /* Calendar container and layout */
+    #calendarWrapper {
+      width: 100%;
+      overflow-x: auto;
+      margin-bottom: 30px;
+      /* Hide scrollbar on WebKit */
+      scrollbar-width: thin;
+      scrollbar-color: #888 #ddd;
+    }
+    #calendarContainer {
+      display: flex;
+      gap: 20px;
+      padding-bottom: 10px;
+      min-width: 800px; /* ensure enough width */
+      scroll-behavior: smooth;
+    }
+
+    /* Each month block */
+    .month {
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 10px;
+      width: 280px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .month-name {
+      font-weight: bold;
+      font-size: 1.2em;
+      text-align: center;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 6px;
+    }
+
+    /* Days container: 7 columns vertical */
+    .days-row {
+      display: flex;
+      height: 100%;
+      /* align items to top */
+      align-items: flex-start;
+      gap: 4px;
+    }
+
+    /* Each day column */
+    .day-col {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: 4px;
+    }
+
+    /* Weekday header */
+    .weekday {
+      font-weight: 600;
+      font-size: 0.9em;
+      text-align: center;
+      padding: 6px 0;
+      background: #ddd;
+      border-radius: 6px;
+      user-select: none;
+      border: 1px solid #ccc;
+    }
+
+    /* Date cells */
+    .date-cell {
+      text-align: center;
+      padding: 6px 0;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      min-height: 28px;
+      font-size: 0.85em;
+      user-select: none;
+    }
+
+    /* Highlight today */
+    .date-cell.today {
+      background: #007acc;
+      color: white;
+      font-weight: bold;
+      border-color: #005fa3;
+    }
+
+    /* Clock container styling - keep your existing styles */
 
     #week {
       font-size: 6em;
@@ -165,6 +254,11 @@
 <body>
   <h1 id="week">Loading current week...</h1>
 
+  <!-- Calendar container -->
+  <div id="calendarWrapper" aria-label="Calendar">
+    <div id="calendarContainer"></div>
+  </div>
+
   <div id="addCity">
     <input
       type="text"
@@ -192,6 +286,7 @@
   </div>
 
   <script>
+    // Time zone & clock related code (unchanged)
     const timeZones = Intl.supportedValuesOf('timeZone');
     const cityToZones = {};
 
@@ -291,12 +386,126 @@
       updateTime();
     }
 
+    // Calendar generation code
+
+    const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    // Generate months for a year starting from Jan this year
+    function generateCalendarMonths(year) {
+      const months = [];
+      for (let m = 0; m < 12; m++) {
+        const firstDay = new Date(year, m, 1);
+        const daysInMonth = new Date(year, m + 1, 0).getDate();
+
+        // Build month data structure:
+        // For each weekday column, we store dates in array (to stack vertically)
+        const dayColumns = [[],[],[],[],[],[],[]]; // 7 arrays
+
+        // We map JS getDay() to Mon=0..Sun=6:
+        // JS getDay(): Sun=0..Sat=6
+        // Our index: Mon=0..Sun=6
+        // So mapping: Mon=1, Tue=2...Sun=0
+
+        for (let d=1; d<=daysInMonth; d++) {
+          const date = new Date(year, m, d);
+          let jsDay = date.getDay(); // Sun=0..Sat=6
+          let idx = jsDay === 0 ? 6 : jsDay - 1; // Mon=0..Sun=6
+          dayColumns[idx].push(d);
+        }
+
+        months.push({
+          monthIndex: m,
+          monthName: firstDay.toLocaleString('default', { month: 'long' }),
+          dayColumns,
+          daysInMonth,
+          year
+        });
+      }
+      return months;
+    }
+
+    // Render calendar months in container
+    function renderCalendar(months) {
+      const container = document.getElementById('calendarContainer');
+      container.innerHTML = '';
+
+      months.forEach((month, i) => {
+        const monthDiv = document.createElement('div');
+        monthDiv.className = 'month';
+        monthDiv.dataset.monthIndex = month.monthIndex;
+
+        const monthNameDiv = document.createElement('div');
+        monthNameDiv.className = 'month-name';
+        monthNameDiv.textContent = `${month.monthName} ${month.year}`;
+        monthDiv.appendChild(monthNameDiv);
+
+        const daysRow = document.createElement('div');
+        daysRow.className = 'days-row';
+
+        // For each weekday, create a vertical column
+        month.dayColumns.forEach((dates, idx) => {
+          const dayCol = document.createElement('div');
+          dayCol.className = 'day-col';
+
+          // Weekday header
+          const weekdayDiv = document.createElement('div');
+          weekdayDiv.className = 'weekday';
+          weekdayDiv.textContent = weekdays[idx];
+          dayCol.appendChild(weekdayDiv);
+
+          // Date cells stacked vertically
+          dates.forEach(date => {
+            const dateDiv = document.createElement('div');
+            dateDiv.className = 'date-cell';
+
+            // Highlight today
+            const today = new Date();
+            if (
+              date === today.getDate() &&
+              month.monthIndex === today.getMonth() &&
+              month.year === today.getFullYear()
+            ) {
+              dateDiv.classList.add('today');
+            }
+
+            dateDiv.textContent = date;
+            dayCol.appendChild(dateDiv);
+          });
+
+          daysRow.appendChild(dayCol);
+        });
+
+        monthDiv.appendChild(daysRow);
+        container.appendChild(monthDiv);
+      });
+    }
+
+    // On load: generate calendar for current year
     document.addEventListener("DOMContentLoaded", () => {
       updateWeek();
       updateTime();
       setInterval(updateTime, 1000);
+
+      const today = new Date();
+      const months = generateCalendarMonths(today.getFullYear());
+      renderCalendar(months);
+
+      // Scroll calendar so current month is centered horizontally
+      const calendarWrapper = document.getElementById('calendarWrapper');
+      const calendarContainer = document.getElementById('calendarContainer');
+      const currentMonthDiv = calendarContainer.querySelector(`[data-month-index="${today.getMonth()}"]`);
+
+      if (currentMonthDiv) {
+        // Calculate center scroll offset
+        const wrapperWidth = calendarWrapper.clientWidth;
+        const monthLeft = currentMonthDiv.offsetLeft;
+        const monthWidth = currentMonthDiv.offsetWidth;
+        const scrollPos = monthLeft - (wrapperWidth / 2) + (monthWidth / 2);
+        calendarWrapper.scrollLeft = scrollPos;
+      }
     });
 
+    // Click outside suggestions closes suggestion box
     document.addEventListener("click", e => {
       if (!document.getElementById("addCity").contains(e.target)) {
         document.getElementById("suggestions").innerHTML = "";
