@@ -154,7 +154,7 @@
       padding-bottom: 40px;
       gap: 20px;
     }
-    #addedClocks, .preset-clock {
+    #addedClocks, #presetClock {
       display: flex;
       flex-wrap: wrap;
       gap: 20px;
@@ -198,14 +198,7 @@
   </div>
   <div id="clocksContainer">
     <div id="addedClocks"></div>
-    <div class="preset-clock" id="presetClock">
-      <div class="city"><h2>Gothenburg</h2><div class="time" id="gothenburg"></div></div>
-      <div class="city"><h2>Istanbul</h2><div class="time" id="istanbul"></div></div>
-      <div class="city"><h2>Vienna</h2><div class="time" id="vienna"></div></div>
-      <div class="city"><h2>Dubai</h2><div class="time" id="dubai"></div></div>
-      <div class="city"><h2>Kuala Lumpur</h2><div class="time" id="kl"></div></div>
-      <div class="city"><h2>Shanghai</h2><div class="time" id="shanghai"></div></div>
-    </div>
+    <div class="preset-clock" id="presetClock"></div>
   </div>
   <script>
     const timeZones = Intl.supportedValuesOf('timeZone');
@@ -216,6 +209,7 @@
       if (!cityToZones[cityLower]) cityToZones[cityLower] = [];
       cityToZones[cityLower].push(tz);
     });
+
     function getWeekNumber(d) {
       d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
       const dayNum = d.getUTCDay() || 7;
@@ -223,24 +217,23 @@
       const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
       return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
     }
+
     function updateWeek() {
       const now = new Date();
       document.getElementById("week").textContent = `Week ${getWeekNumber(now)} of ${now.getFullYear()}`;
     }
+
     function updateTime() {
       const now = new Date();
       const opts = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-      document.getElementById("gothenburg").textContent = now.toLocaleTimeString("en-GB", { ...opts, timeZone: "Europe/Stockholm" });
-      document.getElementById("istanbul").textContent = now.toLocaleTimeString("tr-TR", { ...opts, timeZone: "Europe/Istanbul" });
-      document.getElementById("vienna").textContent = now.toLocaleTimeString("de-AT", { ...opts, timeZone: "Europe/Vienna" });
-      document.getElementById("dubai").textContent = now.toLocaleTimeString("en-AE", { ...opts, timeZone: "Asia/Dubai" });
-      document.getElementById("kl").textContent = now.toLocaleTimeString("ms-MY", { ...opts, timeZone: "Asia/Kuala_Lumpur" });
-      document.getElementById("shanghai").textContent = now.toLocaleTimeString("zh-CN", { ...opts, timeZone: "Asia/Shanghai" });
-      document.querySelectorAll('[data-tz]').forEach(el => {
-        const tz = el.getAttribute('data-tz');
-        el.querySelector('.time').textContent = now.toLocaleTimeString([], { ...opts, timeZone: tz });
+      // Update preset and added clocks
+      document.querySelectorAll('.city').forEach(cityDiv => {
+        const tz = cityDiv.getAttribute('data-tz');
+        if (!tz) return;
+        cityDiv.querySelector('.time').textContent = now.toLocaleTimeString([], { ...opts, timeZone: tz });
       });
     }
+
     function showSuggestions() {
       const input = document.getElementById("cityInput");
       const val = input.value.trim().toLowerCase();
@@ -259,7 +252,22 @@
         container.appendChild(div);
       });
     }
+
     function capitalizeWords(str) { return str.replace(/\b\w/g, c => c.toUpperCase()); }
+
+    function addCityToContainer(cityName, timeZone, container) {
+      if ([...container.children].some(div => div.getAttribute('data-tz') === timeZone)) return;
+      const div = document.createElement("div");
+      div.className = "city";
+      div.setAttribute("data-tz", timeZone);
+      div.innerHTML = `<h2>${capitalizeWords(cityName)}</h2><div class="time"></div><span class="remove-btn" title="Remove">&times;</span>`;
+      div.querySelector(".remove-btn").onclick = () => {
+        div.remove();
+        saveCities();
+      };
+      container.appendChild(div);
+    }
+
     function addCity() {
       const input = document.getElementById("cityInput");
       const cityName = input.value.trim().toLowerCase();
@@ -267,38 +275,32 @@
       const tz = cityToZones[cityName][0];
       const container = document.getElementById("addedClocks");
       if ([...container.children].some(div => div.getAttribute('data-tz') === tz)) {
-        input.value = ""; document.getElementById("suggestions").innerHTML = ""; return;
+        input.value = "";
+        document.getElementById("suggestions").innerHTML = "";
+        return;
       }
-      const div = document.createElement("div");
-      div.className = "city";
-      div.setAttribute("data-tz", tz);
-      div.innerHTML = `<h2>${capitalizeWords(cityName)}</h2><div class="time"></div><span class="remove-btn" title="Remove">&times;</span>`;
-      div.querySelector(".remove-btn").onclick = () => { div.remove(); };
-      container.appendChild(div);
+      addCityToContainer(cityName, tz, container);
       input.value = "";
       document.getElementById("suggestions").innerHTML = "";
       updateTime();
+      saveCities();
     }
+
     const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-    // UPDATED: Generate aligned months
     function generateCalendarMonths(year) {
       const months = [];
       for (let m = 0; m < 12; m++) {
         const firstDay = new Date(year, m, 1);
         const daysInMonth = new Date(year, m + 1, 0).getDate();
         const dayColumns = Array.from({ length: 7 }, () => []);
-
         const startIdx = (firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1);
-        for (let i = 0; i < startIdx; i++) {
-          dayColumns[i].push(""); // empty placeholders
-        }
+        for (let i = 0; i < startIdx; i++) dayColumns[i].push("");
         for (let d = 1; d <= daysInMonth; d++) {
           const date = new Date(year, m, d);
           const idx = date.getDay() === 0 ? 6 : date.getDay() - 1;
           dayColumns[idx].push(d);
         }
-
         months.push({
           monthIndex: m,
           monthName: firstDay.toLocaleString('default', { month: 'long' }),
@@ -310,7 +312,6 @@
       return months;
     }
 
-    // UPDATED: Render blanks as empty cells
     function renderCalendar(months) {
       const container = document.getElementById('calendarContainer');
       container.innerHTML = '';
@@ -318,15 +319,12 @@
         const monthDiv = document.createElement('div');
         monthDiv.className = 'month';
         monthDiv.dataset.monthIndex = month.monthIndex;
-
         const monthNameDiv = document.createElement('div');
         monthNameDiv.className = 'month-name';
         monthNameDiv.textContent = `${month.monthName} ${month.year}`;
         monthDiv.appendChild(monthNameDiv);
-
         const daysRow = document.createElement('div');
         daysRow.className = 'days-row';
-
         month.dayColumns.forEach((dates, idx) => {
           const dayCol = document.createElement('div');
           dayCol.className = 'day-col';
@@ -334,7 +332,6 @@
           weekdayDiv.className = 'weekday';
           weekdayDiv.textContent = weekdays[idx];
           dayCol.appendChild(weekdayDiv);
-
           dates.forEach(date => {
             const dateDiv = document.createElement('div');
             dateDiv.className = 'date-cell';
@@ -351,19 +348,76 @@
           });
           daysRow.appendChild(dayCol);
         });
-
         monthDiv.appendChild(daysRow);
         container.appendChild(monthDiv);
       });
+    }
+
+    // Mapping preset city IDs to time zones for default data
+    const presetMap = {
+      gothenburg: "Europe/Stockholm",
+      istanbul: "Europe/Istanbul",
+      vienna: "Europe/Vienna",
+      dubai: "Asia/Dubai",
+      "kuala lumpur": "Asia/Kuala_Lumpur",
+      shanghai: "Asia/Shanghai"
+    };
+
+    function saveCities() {
+      const addedContainer = document.getElementById("addedClocks");
+      const presetContainer = document.getElementById("presetClock");
+      const cities = [];
+
+      [...addedContainer.children].forEach(div => {
+        cities.push({
+          cityName: div.querySelector('h2').textContent.toLowerCase(),
+          timeZone: div.getAttribute('data-tz')
+        });
+      });
+
+      [...presetContainer.children].forEach(div => {
+        cities.push({
+          cityName: div.querySelector('h2').textContent.toLowerCase(),
+          timeZone: div.getAttribute('data-tz')
+        });
+      });
+
+      localStorage.setItem('savedCities', JSON.stringify(cities));
+    }
+
+    function loadCities() {
+      const saved = localStorage.getItem('savedCities');
+      const addedContainer = document.getElementById("addedClocks");
+      const presetContainer = document.getElementById("presetClock");
+      addedContainer.innerHTML = "";
+      presetContainer.innerHTML = "";
+
+      if (!saved) {
+        // Load default preset cities
+        Object.entries(presetMap).forEach(([cityName, tz]) => {
+          addCityToContainer(cityName, tz, presetContainer);
+        });
+      } else {
+        const cities = JSON.parse(saved);
+        // Add all saved cities to addedClocks container (user customized)
+        cities.forEach(({ cityName, timeZone }) => {
+          addCityToContainer(cityName, timeZone, addedContainer);
+        });
+      }
+      updateTime();
     }
 
     document.addEventListener("DOMContentLoaded", () => {
       updateWeek();
       updateTime();
       setInterval(updateTime, 1000);
+
+      loadCities();
+
       const today = new Date();
       const months = generateCalendarMonths(today.getFullYear());
       renderCalendar(months);
+
       const calendarWrapper = document.getElementById('calendarWrapper');
       const calendarContainer = document.getElementById('calendarContainer');
       const currentMonthDiv = calendarContainer.querySelector(`[data-month-index="${today.getMonth()}"]`);
