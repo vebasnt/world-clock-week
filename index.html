@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>World Clocks - Calendar & Cities</title>
+  <title>Ultimate Calendar</title>
   <style>
     html, body {
       height: 100%;
@@ -54,30 +54,28 @@
       align-items: flex-start;
       gap: 4px;
     }
-    .day-col {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      gap: 4px;
-    }
     .weekday {
+      user-select: none;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      padding: 6px 0;
       font-weight: 600;
       font-size: 0.9em;
       text-align: center;
-      padding: 6px 0;
       background: #ddd;
-      border-radius: 6px;
-      user-select: none;
-      border: 1px solid #ccc;
+      min-width: 30px;
+      box-sizing: border-box;
+      flex-shrink: 0;
     }
     .date-cell {
-      text-align: center;
-      padding: 6px 0;
       border-radius: 6px;
       border: 1px solid transparent;
-      min-height: 28px;
+      padding: 6px 0;
       font-size: 0.85em;
-      user-select: none;
+      text-align: center;
+      min-height: 28px;
+      flex: 1;
+      box-sizing: border-box;
     }
     .date-cell.today {
       background: #007acc;
@@ -109,6 +107,7 @@
       border-radius: 4px;
       background-color: white;
       transition: outline-color 0.3s ease;
+      text-align: center;
     }
     input[type="text"]:focus { outline: 2px solid #888; }
     button {
@@ -169,9 +168,23 @@
       text-align: center;
       flex-shrink: 0;
       position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     .city h2 { margin: 0; font-size: 1.2em; }
     .time { font-size: 1.5em; margin-top: 10px; font-weight: bold; }
+    .time-input {
+      margin-top: 8px;
+      width: 100%;
+      padding: 6px 8px;
+      font-size: 1em;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      text-align: center;
+      max-width: 180px;
+    }
     .remove-btn {
       position: absolute;
       top: 5px;
@@ -226,7 +239,6 @@
     function updateTime() {
       const now = new Date();
       const opts = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-      // Update preset and added clocks
       document.querySelectorAll('.city').forEach(cityDiv => {
         const tz = cityDiv.getAttribute('data-tz');
         if (!tz) return;
@@ -260,11 +272,20 @@
       const div = document.createElement("div");
       div.className = "city";
       div.setAttribute("data-tz", timeZone);
-      div.innerHTML = `<h2>${capitalizeWords(cityName)}</h2><div class="time"></div><span class="remove-btn" title="Remove">&times;</span>`;
+      div.innerHTML = `
+        <h2>${capitalizeWords(cityName)}</h2>
+        <div class="time"></div>
+        <input type="text" class="time-input" placeholder="HH:mm (24h)" title="Enter time to convert"/>
+        <span class="remove-btn" title="Remove">&times;</span>
+      `;
       div.querySelector(".remove-btn").onclick = () => {
         div.remove();
         saveCities();
+        clearAllConversions();
       };
+      div.querySelector(".time-input").addEventListener('input', e => {
+        handleTimeInputChange(div, e.target.value);
+      });
       container.appendChild(div);
     }
 
@@ -286,33 +307,97 @@
       saveCities();
     }
 
+    function parseInputTime(input, tz) {
+      if (!/^\d{1,2}:\d{2}$/.test(input)) return null;
+      let [h, m] = input.split(':').map(Number);
+      if (h > 23 || m > 59) return null;
+      const now = new Date();
+      const tzDateStr = now.toLocaleDateString('en-CA', { timeZone: tz }); // "YYYY-MM-DD"
+      const [year, month, day] = tzDateStr.split('-').map(Number);
+      const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`;
+      const utcDate = new Date(dateStr + 'Z'); 
+      const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const parts = formatter.formatToParts(utcDate);
+      const tzHour = Number(parts.find(p => p.type === 'hour').value);
+      const tzMinute = Number(parts.find(p => p.type === 'minute').value);
+      let offsetH = tzHour - utcDate.getUTCHours();
+      let offsetM = tzMinute - utcDate.getUTCMinutes();
+      if (offsetH > 12) offsetH -= 24;
+      if (offsetH < -12) offsetH += 24;
+      const offsetMs = (offsetH * 60 + offsetM) * 60000;
+      return new Date(utcDate.getTime() - offsetMs);
+    }
+
+    function handleTimeInputChange(sourceDiv, inputValue) {
+      const container = sourceDiv.parentElement;
+      const sourceTz = sourceDiv.getAttribute('data-tz');
+      const inputDate = parseInputTime(inputValue, sourceTz);
+      if (!inputDate) {
+        [...container.children].forEach(div => {
+          if (div === sourceDiv) return;
+          const input = div.querySelector('.time-input');
+          if (input) input.value = '';
+        });
+        return;
+      }
+      [...container.children].forEach(div => {
+        if (div === sourceDiv) return;
+        const tz = div.getAttribute('data-tz');
+        const opts = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz };
+        const convTime = inputDate.toLocaleTimeString([], opts);
+        const input = div.querySelector('.time-input');
+        if (input) input.value = convTime;
+      });
+    }
+
+    function clearAllConversions() {
+      document.querySelectorAll('.time-input').forEach(input => {
+        if (document.activeElement !== input) input.value = '';
+      });
+    }
+
+    document.addEventListener('input', e => {
+      if (e.target.classList.contains('time-input') && e.target.value.trim() === '') {
+        clearAllConversions();
+      }
+    });
+
     const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-    function generateCalendarMonths(year) {
+    function generateCalendarMonthsWithWeeks(year) {
       const months = [];
       for (let m = 0; m < 12; m++) {
         const firstDay = new Date(year, m, 1);
         const daysInMonth = new Date(year, m + 1, 0).getDate();
-        const dayColumns = Array.from({ length: 7 }, () => []);
-        const startIdx = (firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1);
-        for (let i = 0; i < startIdx; i++) dayColumns[i].push("");
+        const weeks = [];
+        let week = [];
         for (let d = 1; d <= daysInMonth; d++) {
           const date = new Date(year, m, d);
-          const idx = date.getDay() === 0 ? 6 : date.getDay() - 1;
-          dayColumns[idx].push(d);
+          const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay();
+          if (dayOfWeek === 1 && week.length) {
+            weeks.push(week);
+            week = [];
+          }
+          week.push(d);
+          if (d === 1 && dayOfWeek > 1) {
+            for (let i = 1; i < dayOfWeek; i++) week.unshift(null);
+          }
         }
+        if (week.length) weeks.push(week);
+        weeks.forEach(wk => {
+          while (wk.length < 7) wk.push(null);
+        });
         months.push({
           monthIndex: m,
           monthName: firstDay.toLocaleString('default', { month: 'long' }),
-          dayColumns,
-          daysInMonth,
+          weeks,
           year
         });
       }
       return months;
     }
 
-    function renderCalendar(months) {
+    function renderCalendarWithWeekNumbers(months) {
       const container = document.getElementById('calendarContainer');
       container.innerHTML = '';
       months.forEach(month => {
@@ -323,118 +408,130 @@
         monthNameDiv.className = 'month-name';
         monthNameDiv.textContent = `${month.monthName} ${month.year}`;
         monthDiv.appendChild(monthNameDiv);
-        const daysRow = document.createElement('div');
-        daysRow.className = 'days-row';
-        month.dayColumns.forEach((dates, idx) => {
-          const dayCol = document.createElement('div');
-          dayCol.className = 'day-col';
-          const weekdayDiv = document.createElement('div');
-          weekdayDiv.className = 'weekday';
-          weekdayDiv.textContent = weekdays[idx];
-          dayCol.appendChild(weekdayDiv);
-          dates.forEach(date => {
+
+        const headerRow = document.createElement('div');
+        headerRow.className = 'days-row';
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'weekday';
+        emptyCell.style.width = '30px';
+        emptyCell.style.background = 'transparent';
+        emptyCell.style.border = 'none';
+        headerRow.appendChild(emptyCell);
+        weekdays.forEach(day => {
+          const dayDiv = document.createElement('div');
+          dayDiv.className = 'weekday';
+          dayDiv.style.flex = '1';
+          dayDiv.textContent = day;
+          headerRow.appendChild(dayDiv);
+        });
+        monthDiv.appendChild(headerRow);
+
+        month.weeks.forEach(week => {
+          const weekRow = document.createElement('div');
+          weekRow.className = 'days-row';
+
+          const firstDateInWeek = week.find(d => d !== null);
+          let weekNumber = '';
+          if (firstDateInWeek) {
+            const dateObj = new Date(month.year, month.monthIndex, firstDateInWeek);
+            weekNumber = getWeekNumber(dateObj);
+          }
+
+          const weekNumDiv = document.createElement('div');
+          weekNumDiv.className = 'weekday';
+          weekNumDiv.style.width = '30px';
+          weekNumDiv.style.fontWeight = 'bold';
+          weekNumDiv.style.textAlign = 'center';
+          weekNumDiv.style.background = '#eee';
+          weekNumDiv.style.border = '1px solid #ccc';
+          weekNumDiv.textContent = weekNumber;
+          weekRow.appendChild(weekNumDiv);
+
+          week.forEach(date => {
             const dateDiv = document.createElement('div');
             dateDiv.className = 'date-cell';
-            if (date !== "") {
+            dateDiv.style.flex = '1';
+            if (date !== null) {
               const today = new Date();
               if (date === today.getDate() && month.monthIndex === today.getMonth() && month.year === today.getFullYear()) {
                 dateDiv.classList.add('today');
               }
               dateDiv.textContent = date;
             } else {
-              dateDiv.textContent = "";
+              dateDiv.textContent = '';
+              dateDiv.style.border = 'none';
+              dateDiv.style.background = 'transparent';
             }
-            dayCol.appendChild(dateDiv);
+            weekRow.appendChild(dateDiv);
           });
-          daysRow.appendChild(dayCol);
+          monthDiv.appendChild(weekRow);
         });
-        monthDiv.appendChild(daysRow);
+
         container.appendChild(monthDiv);
       });
     }
 
-    // Mapping preset city IDs to time zones for default data
     const presetMap = {
-      gothenburg: "Europe/Stockholm",
-      istanbul: "Europe/Istanbul",
-      vienna: "Europe/Vienna",
-      dubai: "Asia/Dubai",
-      "kuala lumpur": "Asia/Kuala_Lumpur",
-      shanghai: "Asia/Shanghai"
+      gothenburg: 'Europe/Stockholm',
+      istanbul: 'Europe/Istanbul',
+      singapore: 'Asia/Singapore',
+      new_york: 'America/New_York',
+      sao_paulo: 'America/Sao_Paulo'
     };
 
+    function addPresetClocks() {
+      const container = document.getElementById('presetClock');
+      container.innerHTML = '';
+      Object.entries(presetMap).forEach(([key, tz]) => {
+        addCityToContainer(key.replace(/_/g, ' '), tz, container);
+      });
+    }
+
     function saveCities() {
-      const addedContainer = document.getElementById("addedClocks");
-      const presetContainer = document.getElementById("presetClock");
-      const cities = [];
-
-      [...addedContainer.children].forEach(div => {
-        cities.push({
-          cityName: div.querySelector('h2').textContent.toLowerCase(),
-          timeZone: div.getAttribute('data-tz')
-        });
-      });
-
-      [...presetContainer.children].forEach(div => {
-        cities.push({
-          cityName: div.querySelector('h2').textContent.toLowerCase(),
-          timeZone: div.getAttribute('data-tz')
-        });
-      });
-
-      localStorage.setItem('savedCities', JSON.stringify(cities));
+      const container = document.getElementById("addedClocks");
+      const cities = [...container.children].map(div => div.getAttribute("data-tz"));
+      localStorage.setItem("addedCities", JSON.stringify(cities));
     }
 
     function loadCities() {
-      const saved = localStorage.getItem('savedCities');
-      const addedContainer = document.getElementById("addedClocks");
-      const presetContainer = document.getElementById("presetClock");
-      addedContainer.innerHTML = "";
-      presetContainer.innerHTML = "";
-
-      if (!saved) {
-        // Load default preset cities
-        Object.entries(presetMap).forEach(([cityName, tz]) => {
-          addCityToContainer(cityName, tz, presetContainer);
-        });
-      } else {
-        const cities = JSON.parse(saved);
-        // Add all saved cities to addedClocks container (user customized)
-        cities.forEach(({ cityName, timeZone }) => {
-          addCityToContainer(cityName, timeZone, addedContainer);
-        });
-      }
-      updateTime();
+      const stored = localStorage.getItem("addedCities");
+      if (!stored) return;
+      const cities = JSON.parse(stored);
+      const container = document.getElementById("addedClocks");
+      container.innerHTML = "";
+      cities.forEach(tz => {
+        const cityName = tz.substring(tz.lastIndexOf('/') + 1).replace(/_/g, ' ');
+        addCityToContainer(cityName, tz, container);
+      });
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    function centerCurrentMonth() {
+      const container = document.getElementById('calendarWrapper');
+      const currentMonthIndex = new Date().getMonth();
+      const monthDiv = document.querySelector(`.month[data-month-index="${currentMonthIndex}"]`);
+      if (!monthDiv) return;
+      const containerRect = container.getBoundingClientRect();
+      const monthRect = monthDiv.getBoundingClientRect();
+      const scrollLeft = container.scrollLeft;
+      const offset = (monthRect.left + monthRect.width / 2) - (containerRect.left + containerRect.width / 2);
+      container.scrollTo({ left: scrollLeft + offset, behavior: 'smooth' });
+    }
+
+    function init() {
       updateWeek();
-      updateTime();
-      setInterval(updateTime, 1000);
+      setInterval(updateWeek, 1000 * 60 * 5);
+
+      const months = generateCalendarMonthsWithWeeks(new Date().getFullYear());
+      renderCalendarWithWeekNumbers(months);
+      centerCurrentMonth();
 
       loadCities();
+      addPresetClocks();
 
-      const today = new Date();
-      const months = generateCalendarMonths(today.getFullYear());
-      renderCalendar(months);
-
-      const calendarWrapper = document.getElementById('calendarWrapper');
-      const calendarContainer = document.getElementById('calendarContainer');
-      const currentMonthDiv = calendarContainer.querySelector(`[data-month-index="${today.getMonth()}"]`);
-      if (currentMonthDiv) {
-        const wrapperWidth = calendarWrapper.clientWidth;
-        const monthLeft = currentMonthDiv.offsetLeft;
-        const monthWidth = currentMonthDiv.offsetWidth;
-        const scrollPos = monthLeft - (wrapperWidth / 2) + (monthWidth / 2);
-        calendarWrapper.scrollLeft = scrollPos;
-      }
-    });
-
-    document.addEventListener("click", e => {
-      if (!document.getElementById("addCity").contains(e.target)) {
-        document.getElementById("suggestions").innerHTML = "";
-      }
-    });
+      updateTime();
+      setInterval(updateTime, 1000);
+    }
+    window.onload = init;
   </script>
 </body>
 </html>
