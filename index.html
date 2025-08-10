@@ -585,21 +585,25 @@
     }
 
     function init() {
-      updateWeek();
-      setInterval(updateWeek, 1000 * 60 * 5);
+        updateWeek();
+        setInterval(updateWeek, 1000 * 60 * 5);
 
-      const months = generateCalendarMonthsWithWeeks(new Date().getFullYear());
-      renderCalendarWithWeekNumbers(months);
-      centerCurrentMonth();
+        const currentYear = new Date().getFullYear();
+        const monthsThisYear = generateCalendarMonthsWithWeeks(currentYear);
+        const monthsNextYear = generateCalendarMonthsWithWeeks(currentYear + 1);
 
-      addPresetClocks();
-      loadCities();
+        // Combine both years
+        const allMonths = monthsThisYear.concat(monthsNextYear);
 
-      updateTime();
-      setInterval(updateTime, 1000);
-    }
+        renderCalendarWithWeekNumbers(allMonths);
+        centerCurrentMonth();
 
+        addPresetClocks();
+        loadCities();
 
+        updateTime();
+        setInterval(updateTime, 1000);
+        }
       document.addEventListener('click', (e) => {
         const input = document.getElementById('cityInput');
         const suggestions = document.getElementById('suggestions');
