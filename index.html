@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ultimate Calendar</title>
+  <title>World Clocks - Calendar & Cities</title>
   <style>
     html, body {
       height: 100%;
       margin: 0;
-      padding: 20px;
+      padding: 0;
       font-family: sans-serif;
       background: #f5f5f5;
       color: #333;
@@ -197,9 +197,74 @@
       line-height: 1;
     }
     .remove-btn:hover { color: #f44336; }
+    #themeToggle {
+      position: fixed;
+      top: 15px;
+      right: 20px;
+      cursor: pointer;
+      font-size: 1.4em;
+      background: white;
+      border-radius: 50%;
+      padding: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 1000;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+    body.dark-mode #themeToggle {
+      background: #333;
+      color: white;
+    }
+    body.dark-mode {
+      background: #1e1e1e;
+      color: #e0e0e0;
+    }
+    body.dark-mode .month {
+      background: #2a2a2a;
+      color: #e0e0e0;
+    }
+    body.dark-mode .weekday {
+      background: #444;
+      border-color: #666;
+    }
+    body.dark-mode .month .days-row > .weekday:first-child {
+      background: #444 !important;
+      border-color: #666 !important;
+      color: white !important;
+    }
+    body.dark-mode .date-cell {
+      border-color: #444;
+    }
+    body.dark-mode .date-cell.today {
+      background: #0d6efd;
+      border-color: #0946a2;
+    }
+    body.dark-mode .city {
+      background: #2a2a2a;
+      color: #e0e0e0;
+    }
+    body.dark-mode input[type="text"],
+    body.dark-mode .time-input {
+      background: #333;
+      color: #e0e0e0;
+      border: 1px solid #666;
+    }
+    body.dark-mode button {
+      background: #333;
+      color: #e0e0e0;
+      border: 1px solid #666;
+    }
+    body.dark-mode #suggestions {
+      background: #2a2a2a;
+      border-color: #666;
+    }
+    body.dark-mode #suggestions div:hover {
+      background: #444;
+    }
   </style>
 </head>
 <body>
+  <div id="pageWrapper" style="padding: 20px;"></div>
+  <div id="themeToggle">🌙</div>
   <h1 id="week">Loading current week...</h1>
   <div id="calendarWrapper" aria-label="Calendar">
     <div id="calendarContainer"></div>
@@ -527,12 +592,43 @@
       renderCalendarWithWeekNumbers(months);
       centerCurrentMonth();
 
-      loadCities();
       addPresetClocks();
+      loadCities();
 
       updateTime();
       setInterval(updateTime, 1000);
     }
+
+
+      document.addEventListener('click', (e) => {
+        const input = document.getElementById('cityInput');
+        const suggestions = document.getElementById('suggestions');
+        if (!input.contains(e.target) && !suggestions.contains(e.target)) {
+          suggestions.innerHTML = '';
+        }
+      });
+
+      function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
+        localStorage.setItem('theme', isDark ? 'dark' : 'bright');
+      }
+
+      function loadTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+          document.body.classList.add('dark-mode');
+          document.getElementById('themeToggle').textContent = '☀️';
+        } else {
+          document.getElementById('themeToggle').textContent = '🌙';
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        loadTheme();
+      });
     window.onload = init;
   </script>
 </body>
