@@ -329,26 +329,28 @@
     }
 
     function handleTimeInputChange(sourceDiv, inputValue) {
-      const container = sourceDiv.parentElement;
-      const sourceTz = sourceDiv.getAttribute('data-tz');
-      const inputDate = parseInputTime(inputValue, sourceTz);
-      if (!inputDate) {
-        [...container.children].forEach(div => {
-          if (div === sourceDiv) return;
-          const input = div.querySelector('.time-input');
-          if (input) input.value = '';
-        });
-        return;
-      }
-      [...container.children].forEach(div => {
-        if (div === sourceDiv) return;
-        const tz = div.getAttribute('data-tz');
-        const opts = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz };
-        const convTime = inputDate.toLocaleTimeString([], opts);
-        const input = div.querySelector('.time-input');
-        if (input) input.value = convTime;
-      });
-    }
+  const sourceTz = sourceDiv.getAttribute('data-tz');
+  const inputDate = parseInputTime(inputValue, sourceTz);
+  const allCities = document.querySelectorAll('.city');
+
+  if (!inputDate) {
+    allCities.forEach(div => {
+      if (div === sourceDiv) return;
+      const input = div.querySelector('.time-input');
+      if (input) input.value = '';
+    });
+    return;
+  }
+
+  allCities.forEach(div => {
+    if (div === sourceDiv) return;
+    const tz = div.getAttribute('data-tz');
+    const opts = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz };
+    const convTime = inputDate.toLocaleTimeString([], opts);
+    const input = div.querySelector('.time-input');
+    if (input) input.value = convTime;
+  });
+}
 
     function clearAllConversions() {
       document.querySelectorAll('.time-input').forEach(input => {
