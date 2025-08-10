@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="description" content=" World clocks and calendar with time zone conversion, time conversion, which week?" />
+  <meta name="description" content="World clocks and calendar with time zone conversion, time conversion, which week?." />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Time Converter & Calendar</title>
+  <title>World Clocks - Calendar & Cities</title>
   <style>
     html, body {
       height: 100%;
@@ -260,6 +260,56 @@
     }
     body.dark-mode #suggestions div:hover {
       background: #444;
+    }
+    @media (max-width: 600px) {
+    #calendarContainer {
+        min-width: unset;
+        gap: 12px;
+    }
+    .month {
+        width: 90vw;
+        padding: 8px;
+    }
+    .month-name {
+        font-size: 1em;
+    }
+    .weekday {
+        font-size: 0.75em;
+        min-width: 24px;
+        padding: 4px 0;
+    }
+    .date-cell {
+        font-size: 0.7em;
+        min-height: 24px;
+        padding: 4px 0;
+    }
+    #clocksContainer {
+        flex-direction: column;
+        padding-bottom: 20px;
+    }
+    .city {
+        width: 90vw;
+        padding: 10px;
+    }
+    input[type="text"], .time-input {
+        width: 100%;
+        font-size: 0.9em;
+    }
+    button {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 8px;
+    }
+    #addCity {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    #suggestions {
+        width: 90vw !important;
+        left: 50%;
+        transform: translateX(-50%);
+    }
     }
   </style>
 </head>
