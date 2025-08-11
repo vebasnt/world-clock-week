@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Time Lumen</title>
   <style>
-    html, body {
+     html, body {
       height: 100%;
       margin: 0;
       padding: 0;
@@ -260,6 +260,24 @@
     }
     body.dark-mode #suggestions div:hover {
       background: #444;
+    }
+    @media (max-width: 768px) {
+      #calendarContainer {
+        flex-wrap: wrap;
+        min-width: 100%;
+        justify-content: center;
+      }
+      .month {
+        width: 90%;
+        max-width: 320px;
+      }
+      #week {
+        font-size: 3em;
+      }
+      .city {
+        width: 90%;
+        max-width: 300px;
+      }
     }
   </style>
 </head>
