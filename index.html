@@ -279,6 +279,31 @@
         max-width: 300px;
       }
     }
+    .time-converter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    margin-top: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    }
+
+    .time-label {
+    font-size: 0.75em;
+    color: #aaa;
+    white-space: normal;
+    flex: 0 0 70px;   /* fixed width for label */
+    align-items: center;
+    align-self: flex-start; /* optional: baseline alignment */
+    margin-top: 12px;        /* adjust value to nudge down */
+    }
+
+    .time-input {
+    flex: 1 1 auto;   /* input shrinks/expands to fit */
+    min-width: 0;     /* allow shrinking */
+    box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
@@ -357,11 +382,14 @@
       div.className = "city";
       div.setAttribute("data-tz", timeZone);
       div.innerHTML = `
-        <h2>${capitalizeWords(cityName)}</h2>
-        <div class="time"></div>
-        <input type="text" class="time-input" placeholder="HH:mm (24h)" title="Enter time to convert"/>
-        <span class="remove-btn" title="Remove">&times;</span>
-      `;
+       <h2>${capitalizeWords(cityName)}</h2>
+      <div class="time"></div>
+      <div class="time-converter">
+      <span class="time-label">Input time to convert:</span>
+      <input type="text" class="time-input" placeholder="HH:mm (24h)" title="Enter time to convert"/>
+      </div>
+      <span class="remove-btn" title="Remove">&times;</span>
+`;
       div.querySelector(".remove-btn").onclick = () => {
         div.remove();
         saveCities();
